@@ -38,7 +38,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const optimizeResume = async () => {
+const optimizeResume = async () => {
     if (!resume.trim() || !jobDescription.trim()) {
       setError('Veuillez remplir les deux champs avant de continuer.');
       return;
@@ -48,9 +48,24 @@ function App() {
     setError('');
     
     try {
-      // Version démo - optimisation simple côté client
-      const optimizedCV = await simulateAIOptimization(resume, jobDescription);
-      setOptimizedResume(optimizedCV);
+      const response = await fetch('/api/optimize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resume: resume,
+          jobDescription: jobDescription
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de l\'optimisation');
+      }
+
+      const data = await response.json();
+      setOptimizedResume(data.optimizedResume);
       
     } catch (err) {
       setError('Erreur lors de l\'optimisation: ' + err.message);
