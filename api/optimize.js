@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'CV et description du poste requis' });
     }
 
-    // Appel à l'API Claude
+    // Appel à l'API Claude avec le modèle le plus récent
     const optimizedResume = await optimizeWithClaude(resume, jobDescription);
 
     res.status(200).json({ optimizedResume });
@@ -54,30 +54,37 @@ CONSIGNES:
 
 IMPORTANT: Réponds UNIQUEMENT avec le CV optimisé en format texte, sans commentaires supplémentaires.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-    })
-  });
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022', // Modèle le plus récent
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      })
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`API Claude error: ${errorData.error?.message || 'Unknown error'}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Claude API Error:', errorData);
+      throw new Error(`API Claude error: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+    
+  } catch (error) {
+    console.error('Error calling Claude API:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  return data.content[0].text;
 }
